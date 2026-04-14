@@ -1,0 +1,10 @@
+import pandas as pd
+
+df_2017 = pd.read_csv("/Users/Princia/MSPR/data/curated/election/elections_2012_tour1.csv")
+
+df_2017["annee"] = 2017
+
+
+print(df_2017.head())
+
+df_2017.to_csv("data/clean/elections_2017_clean.csv", index=False)
