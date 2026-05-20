@@ -1,0 +1,47 @@
+{
+  "version_A": {
+    "features": [
+      "bloc_cand1_enc",
+      "bloc_cand2_enc",
+      "bloc_cand3_enc",
+      "bloc_cand5_enc",
+      "taux_faible_diplome_scaled",
+      "revenu_median_scaled",
+      "log_delinquance_scaled"
+    ],
+    "description": "Avec historique électoral (bloc_cand) — plafond théorique",
+    "usage": "Comparer les modèles, mesurer l'apport des données électorales"
+  },
+  "version_B": {
+    "features": [
+      "taux_faible_diplome_scaled",
+      "revenu_median_scaled",
+      "log_delinquance_scaled",
+      "log_population_scaled",
+      "pct_abstention_scaled"
+    ],
+    "description": "Purement socio-économique — prédiction prospective",
+    "usage": "Prédiction 2027 à partir des conditions socio-éco actuelles"
+  },
+  "mapping_bloc": {
+    "DROITE": 0,
+    "CENTRE": 1,
+    "GAUCHE": 2,
+    "DIVERS": 3,
+    "ABSENT": -1
+  },
+  "mapping_cible": {
+    "DROITE": 0,
+    "CENTRE": 1,
+    "GAUCHE": 2,
+    "DIVERS": 3
+  },
+  "mapping_transition": {
+    "STABLE_DROITE": 0,
+    "BASCULE_CENTRE": 1,
+    "CENTRE": 2,
+    "GAUCHE": 3,
+    "AUTRE": 4,
+    "INCONNU": -1
+  }
+}
