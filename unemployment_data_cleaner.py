@@ -112,3 +112,4 @@ for annee in [2016, 2022]:
 fichier_global = os.path.join(CURATED_PATH, "chomage_2016_2022.csv")
 df_taux.to_csv(fichier_global, index=False, encoding="utf-8")
 print(f"✅ Fichier global → {fichier_global}")
+
