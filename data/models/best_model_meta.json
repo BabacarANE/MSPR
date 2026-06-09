@@ -1,0 +1,29 @@
+{
+  "binaire": {
+    "best_model": "Logistic Regression",
+    "test_accuracy": 0.8873,
+    "test_f1_macro": 0.8553,
+    "auc_roc": 0.8842
+  },
+  "multiclasse": {
+    "best_model": "SVM (RBF)",
+    "test_accuracy": 0.821,
+    "test_f1_macro": 0.6587,
+    "auc_roc": 0.916
+  },
+  "features": [
+    "revenu_median_scaled",
+    "taux_faible_diplome_scaled",
+    "pct_abstention_scaled",
+    "log_delinquance_scaled",
+    "log_population_scaled"
+  ],
+  "classes": [
+    "CENTRE",
+    "DROITE",
+    "GAUCHE"
+  ],
+  "dataset": "Version B — socio-éco pur",
+  "train": "2017",
+  "test": "2022"
+}
