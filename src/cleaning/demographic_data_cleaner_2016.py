@@ -1,9 +1,13 @@
 import pandas as pd
 import os
 
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
+
+
 # ---- CHEMINS ----
-RAW_PATH     = "data/raw/demographie"
-CURATED_PATH = "data/curated/demographie"
+RAW_PATH     = str(_BASE_DIR / "data/raw/demographie")
+CURATED_PATH = str(_BASE_DIR / "data/curated/demographie")
 
 os.makedirs(CURATED_PATH, exist_ok=True)
 
@@ -78,7 +82,7 @@ df_final = df_final.rename(columns={
     col_pop_tot: "population_totale",
 })
 
-df_final["annee"] = 2021
+df_final["annee"] = 2016
 
 df_final = df_final[[
     "code_geo", "code_commune", "libelle_commune",
@@ -97,6 +101,6 @@ print(f"\n🔍 Aperçu :")
 print(df_final.head(5).to_string(index=False))
 
 # ---- SAUVEGARDE ----
-fichier_curated = os.path.join(CURATED_PATH, "demographie_2021.csv")
+fichier_curated = os.path.join(CURATED_PATH, "population_2016.csv")
 df_final.to_csv(fichier_curated, index=False, encoding="utf-8")
 print(f"\n✅ Sauvegardé → {fichier_curated}")

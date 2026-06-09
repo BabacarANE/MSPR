@@ -1,9 +1,13 @@
 import pandas as pd
 import os
 
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
+
+
 # ---- CHEMINS ----
-RAW_PATH     = "data/raw/social"
-CURATED_PATH = "data/curated/social"
+RAW_PATH     = str(_BASE_DIR / "data/raw/social")
+CURATED_PATH = str(_BASE_DIR / "data/curated/social")
 
 os.makedirs(CURATED_PATH, exist_ok=True)
 

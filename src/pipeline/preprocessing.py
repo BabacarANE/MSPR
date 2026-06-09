@@ -20,9 +20,11 @@ import joblib
 #   6. Sélection de features
 #   7. Sauvegarde du dataset preprocessé + scalers
 # ============================================================
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
 
-FINAL_PATH  = "data/final"
-MODELS_PATH = "data/models"
+FINAL_PATH  = str(_BASE_DIR / "data/final")
+MODELS_PATH = str(_BASE_DIR / "data/models")
 os.makedirs(MODELS_PATH, exist_ok=True)
 
 # ============================================================
@@ -395,6 +397,10 @@ for version, feats in [("A", features_A), ("B", features_B)]:
 
 # ---- Sauvegarde des métadonnées ----
 import json
+
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
+
 
 features_info = {
     "version_A": {

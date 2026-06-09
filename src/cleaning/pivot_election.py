@@ -2,9 +2,13 @@ import pandas as pd
 import unicodedata
 import os
 
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
+
+
 # ---- CHEMINS ----
-CURATED_PATH = "data/curated/election"
-FINAL_PATH   = "data/final"
+CURATED_PATH = str(_BASE_DIR / "data/curated/election")
+FINAL_PATH   = str(_BASE_DIR / "data/final")
 
 os.makedirs(FINAL_PATH, exist_ok=True)
 

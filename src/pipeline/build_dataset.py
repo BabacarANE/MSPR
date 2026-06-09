@@ -1,6 +1,10 @@
 import pandas as pd
 import os
 
+from pathlib import Path as _Path
+_BASE_DIR = _Path(__file__).resolve().parents[2]
+
+
 # ============================================================
 # build_dataset.py
 # Jointure de toutes les sources curated → dataset_ml_final.csv
@@ -10,7 +14,7 @@ import os
 #   Élection 2022 ← socio-éco 2021 ou 2022 selon la source
 # ============================================================
 
-FINAL_PATH = "data/final"
+FINAL_PATH = str(_BASE_DIR / "data/final")
 os.makedirs(FINAL_PATH, exist_ok=True)
 
 # ============================================================
@@ -21,11 +25,11 @@ print("📂 ÉTAPE 1 — Chargement des pivots électoraux")
 print("=" * 60)
 
 df_2017 = pd.read_csv(
-    "data/final/elections_2017_pivot.csv",
+    str(_BASE_DIR / "data/final/elections_2017_pivot.csv"),
     dtype={"code_geo": str, "code_commune": str}
 )
 df_2022 = pd.read_csv(
-    "data/final/elections_2022_pivot.csv",
+    str(_BASE_DIR / "data/final/elections_2022_pivot.csv"),
     dtype={"code_geo": str, "code_commune": str}
 )
 
@@ -49,7 +53,7 @@ print("📂 ÉTAPE 2 — Chômage")
 print("=" * 60)
 
 df_chomage = pd.read_csv(
-    "data/curated/emploi/chomage_2016_2022.csv",
+    str(_BASE_DIR / "data/curated/emploi/chomage_2016_2022.csv"),
     dtype={"code_geo": str}
 )
 
@@ -69,7 +73,7 @@ print("📂 ÉTAPE 3 — Revenus médians")
 print("=" * 60)
 
 df_revenus = pd.read_csv(
-    "data/curated/economie/revenu_median_2016_2021.csv",
+    str(_BASE_DIR / "data/curated/economie/revenu_median_2016_2021.csv"),
     dtype={"code_geo": str}
 )
 
@@ -92,7 +96,7 @@ print("📂 ÉTAPE 4 — Diplômes")
 print("=" * 60)
 
 df_diplomes = pd.read_csv(
-    "data/curated/social/diplomes_2016_2022.csv",
+    str(_BASE_DIR / "data/curated/social/diplomes_2016_2022.csv"),
     dtype={"code_geo": str}
 )
 
@@ -111,7 +115,7 @@ print("📂 ÉTAPE 5 — Délinquance")
 print("=" * 60)
 
 df_delinquance = pd.read_csv(
-    "data/curated/securite/delinquance_2016_2022.csv",
+    str(_BASE_DIR / "data/curated/securite/delinquance_2016_2022.csv"),
     dtype={"code_geo": str}
 )
 
@@ -131,23 +135,32 @@ print("📂 ÉTAPE 6 — Démographie")
 print("=" * 60)
 
 df_demo_2016 = pd.read_csv(
-    "data/curated/demographie/population_2016.csv",
+    str(_BASE_DIR / "data/curated/demographie/population_2016.csv"),
     dtype={"code_commune": str}
 )
-# code_commune vaut déjà "59001" (5 chiffres dept+commune) → c'est notre code_geo
-df_demo_2016["code_geo"] = df_demo_2016["code_commune"].str.strip().str.zfill(5)
+# ✅ CORRECTIF : code_commune = "001" → code_geo = "59001" (préfixe département 59)
+# zfill(5) donnait "00001" au lieu de "59001" → jointure ratait complètement
+df_demo_2016["code_geo"] = "59" + df_demo_2016["code_commune"].str.strip().str.zfill(3)
 df_demo_2016["annee_socioeco"] = 2016
 df_demo_2016 = df_demo_2016[["code_geo", "annee_socioeco", "population_municipale", "population_totale"]]
 
+print(f"   code_geo demo_2016 exemples : {df_demo_2016['code_geo'].head(3).tolist()}")
+
 df_demo_2021 = pd.read_csv(
-    "data/curated/demographie/demographie_2021.csv",
+    str(_BASE_DIR / "data/curated/demographie/demographie_2021.csv"),
     dtype={"code_geo": str}
 )
-# Vérifier si code_geo existe, sinon le reconstruire depuis code_commune
+# Vérifier si code_geo existe et a le bon format (59xxx)
 if "code_geo" not in df_demo_2021.columns:
-    df_demo_2021["code_geo"] = df_demo_2021["code_commune"].str.strip().str.zfill(5)
+    df_demo_2021["code_geo"] = "59" + df_demo_2021["code_commune"].str.strip().str.zfill(3)
+elif not df_demo_2021["code_geo"].str.startswith("59").all():
+    # code_geo présent mais mauvais format → reconstruire
+    if "code_commune" in df_demo_2021.columns:
+        df_demo_2021["code_geo"] = "59" + df_demo_2021["code_commune"].str.strip().str.zfill(3)
 df_demo_2021["annee_socioeco"] = 2022  # mapping 2021 → élection 2022
 df_demo_2021 = df_demo_2021[["code_geo", "annee_socioeco", "population_municipale", "population_totale"]]
+
+print(f"   code_geo demo_2021 exemples : {df_demo_2021['code_geo'].head(3).tolist()}")
 
 df_demo = pd.concat([df_demo_2016, df_demo_2021], ignore_index=True)
 
