@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from sklearn.neural_network import MLPClassifier
 
 # ── Couleurs terminal ──────────────────────────────────────────────────────────
 GREEN  = "\033[92m"

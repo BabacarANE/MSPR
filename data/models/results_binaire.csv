@@ -1,6 +1,7 @@
 model_name,cv_accuracy,cv_accuracy_std,cv_f1_macro,test_accuracy,test_f1_macro,test_f1_weighted,auc_roc,overfit,duration_s
-Logistic Regression,0.8056,0.0119,0.6358,0.8873,0.8553,0.886,0.8842,False,8.7
-Random Forest,0.9275,0.0094,0.7201,0.7623,0.5556,0.6922,0.8669,True,9.2
-Gradient Boosting,0.9074,0.0212,0.6077,0.7531,0.5383,0.6802,0.7951,True,5.8
+Logistic Regression,0.8056,0.0119,0.6358,0.8873,0.8553,0.886,0.8842,False,7.4
+Random Forest,0.9275,0.0094,0.7201,0.7623,0.5556,0.6922,0.8669,True,10.6
+Gradient Boosting,0.9074,0.0212,0.6077,0.7531,0.5383,0.6802,0.7951,True,7.7
 SVM (RBF),0.8411,0.0293,0.6738,0.8318,0.7608,0.8195,0.8927,False,0.4
-Voting Classifier,0.9259,0.0159,0.7188,0.7639,0.5669,0.6985,0.89,True,4.4
+Voting Classifier,0.9259,0.0159,0.7188,0.7639,0.5669,0.6985,0.89,True,6.3
+MLP (Neural Net),0.9213,0.0033,0.4949,0.7253,0.4204,0.6098,0.3616,False,0.6

@@ -11,6 +11,7 @@ Modèles comparés :
     3. Gradient Boosting
     4. SVM (kernel RBF)
     5. Voting Classifier (LR + RF + GB ensemblés)
+    6. MLP (réseau de neurones — 2 couches cachées)
 
 Sorties modèles :
     data/models/results_binaire.csv
@@ -27,6 +28,7 @@ Sorties graphiques :
     results/figures/05_courbes_apprentissage.png
     results/figures/06_precision_rappel.png
     results/figures/07_cv_folds.png
+    results/figures/08_mlp_courbes_perte.png
 
 Exécuter depuis la RACINE :
     python scripts/run_models.py
@@ -50,6 +52,7 @@ from sklearn.ensemble import (
     VotingClassifier,
 )
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import (
     StratifiedKFold, cross_validate, learning_curve
@@ -111,7 +114,7 @@ PALETTE = {
 
 MODEL_COLORS = [
     PALETTE["lr"], PALETTE["rf"], PALETTE["gb"],
-    PALETTE["svm"], PALETTE["vc"],
+    PALETTE["svm"], PALETTE["vc"], "#9B5DE5",   # violet pour MLP
 ]
 
 plt.rcParams.update({
@@ -210,12 +213,30 @@ def definir_modeles():
         n_jobs=-1,
     )
 
+    # ── MLP (réseau de neurones — 2 couches cachées) ──────────────────────────
+    # early_stopping=True → arrêt si val_loss ne s'améliore plus
+    # → produit une loss_curve_ exploitable pour la courbe de perte
+    mlp = MLPClassifier(
+        hidden_layer_sizes=(64, 32),
+        activation="relu",
+        solver="adam",
+        alpha=0.01,               # régularisation L2
+        learning_rate_init=0.001,
+        max_iter=500,
+        early_stopping=True,
+        validation_fraction=0.15,
+        n_iter_no_change=20,
+        random_state=42,
+        verbose=False,
+    )
+
     return {
         "Logistic Regression": lr,
         "Random Forest":       rf,
         "Gradient Boosting":   gb,
         "SVM (RBF)":           svm,
         "Voting Classifier":   voting,
+        "MLP (Neural Net)":    mlp,
     }
 
 
@@ -303,7 +324,7 @@ def evaluer_modele(nom, modele, X_train, X_test, y_train, y_test,
 # ══════════════════════════════════════════════════════════════════════════════
 
 def afficher_comparatif(resultats, mode):
-    titre(f"Comparaison 5 modèles — Version B — {mode.upper()}")
+    titre(f"Comparaison 6 modèles — Version B — {mode.upper()}")
     header = (f"  {'Modèle':<25} {'CV Acc':>7} {'Test Acc':>9} "
               f"{'F1 macro':>9} {'AUC':>7} {'Overfit':>8}")
     print(header)
@@ -719,6 +740,190 @@ def fig_cv_folds(X_train, y_train_bin, y_train_multi, out_path):
     _save(fig, out_path)
 
 
+# ── Figure 8 : Courbes de perte MLP ──────────────────────────────────────────
+def fig_mlp_courbes_perte(X_train, y_train_bin, y_train_multi, out_path):
+    """
+    Entraîne un MLP sur binaire et multiclasse, puis trace :
+    - La courbe de perte (loss) par epoch — train + validation
+    - La courbe d'accuracy par epoch (validation)
+    C'est la vraie "courbe de perte" au sens deep learning.
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle("MLP (Réseau de Neurones) — Courbes de Perte et d'Apprentissage",
+                 fontsize=14, fontweight="bold", color=PALETTE["accent"])
+
+    configs = [
+        (y_train_bin,   "Binaire — DROITE vs EXCEPTION",   0),
+        (y_train_multi, "Multiclasse — DROITE/CENTRE/GAUCHE", 1),
+    ]
+
+    for y_train, titre_config, col in configs:
+        mlp = MLPClassifier(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            solver="adam",
+            alpha=0.01,
+            learning_rate_init=0.001,
+            max_iter=500,
+            early_stopping=True,
+            validation_fraction=0.15,
+            n_iter_no_change=20,
+            random_state=42,
+            verbose=False,
+        )
+        mlp.fit(X_train, y_train)
+
+        n_epochs    = len(mlp.loss_curve_)
+        epochs      = np.arange(1, n_epochs + 1)
+        loss_train  = mlp.loss_curve_
+        loss_val    = mlp.validation_scores_   # accuracy sur val set
+
+        # ── Courbe de perte (loss) ───────────────────────────────────────────
+        ax_loss = axes[0][col]
+        ax_loss.plot(epochs, loss_train, lw=2, color=PALETTE["accent"],
+                     label="Perte entraînement")
+        # best_loss_ est un float (valeur) pas un epoch → on trace juste le min
+        # axvline sur epoch du minimum de perte
+        ax_loss.axvline(x=np.argmin(loss_train) + 1,
+                        color="gray", linestyle=":", alpha=0.6, lw=1.5,
+                        label="Epoch min perte")
+
+        # Annoter le min
+        min_loss_epoch = np.argmin(loss_train) + 1
+        min_loss_val   = min(loss_train)
+        ax_loss.scatter(min_loss_epoch, min_loss_val, s=100,
+                        color=PALETTE["svm"], zorder=5)
+        ax_loss.annotate(f"Min: {min_loss_val:.4f}\n(epoch {min_loss_epoch})",
+                         xy=(min_loss_epoch, min_loss_val),
+                         xytext=(min_loss_epoch + n_epochs * 0.05,
+                                 min_loss_val + 0.02),
+                         fontsize=8, color=PALETTE["svm"],
+                         arrowprops=dict(arrowstyle="->", color=PALETTE["svm"]))
+
+        ax_loss.set_xlabel("Epoch", fontsize=10)
+        ax_loss.set_ylabel("Perte (Cross-Entropy)", fontsize=10)
+        ax_loss.set_title(f"Courbe de Perte — {titre_config}\n"
+                          f"Arrêt à l'epoch {n_epochs} (early stopping)",
+                          fontsize=11, fontweight="bold")
+        ax_loss.legend(fontsize=9)
+
+        # ── Courbe de précision validation ───────────────────────────────────
+        ax_acc = axes[1][col]
+        ax_acc.plot(epochs, loss_val, lw=2, color=PALETTE["lr"],
+                    label="Accuracy validation")
+
+        # Meilleure epoch
+        best_epoch = np.argmax(loss_val) + 1
+        best_acc   = max(loss_val)
+        ax_acc.scatter(best_epoch, best_acc, s=100,
+                       color=PALETTE["svm"], zorder=5)
+        ax_acc.axhline(y=best_acc, color="gray", linestyle=":",
+                       alpha=0.5, lw=1)
+        ax_acc.annotate(f"Max: {best_acc:.3f}\n(epoch {best_epoch})",
+                        xy=(best_epoch, best_acc),
+                        xytext=(best_epoch + n_epochs * 0.05,
+                                best_acc - 0.04),
+                        fontsize=8, color=PALETTE["svm"],
+                        arrowprops=dict(arrowstyle="->", color=PALETTE["svm"]))
+
+        ax_acc.set_xlabel("Epoch", fontsize=10)
+        ax_acc.set_ylabel("Accuracy (validation)", fontsize=10)
+        ax_acc.set_title(f"Courbe d'Accuracy — {titre_config}\n"
+                         f"Meilleure accuracy : {best_acc:.3f}",
+                         fontsize=11, fontweight="bold")
+        ax_acc.legend(fontsize=9)
+        ax_acc.set_ylim([0, 1.05])
+
+    plt.tight_layout()
+    _save(fig, out_path)
+
+
+# ── Figure 9 : Feature Importance — LR vs RF ─────────────────────────────────
+def fig_feature_importance(X_train, y_train_bin, y_train_multi, out_path):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig.suptitle(
+        "Feature Importance — Coefficients LR vs Importance RF\n"
+        "Version B — Socio-économique pur",
+        fontsize=14, fontweight="bold", color=PALETTE["accent"]
+    )
+
+    features_labels = [
+        "Revenu médian",
+        "Taux faible diplôme",
+        "Taux abstention",
+        "Délinquance (log)",
+        "Population (log)",
+    ]
+
+    # ── LR : coefficients ────────────────────────────────────────────────────
+    lr_model = LogisticRegression(
+        C=0.1, class_weight="balanced",
+        max_iter=1000, random_state=42, solver="lbfgs"
+    )
+    lr_model.fit(X_train, y_train_bin)
+    coefs = lr_model.coef_[0]
+    ordre_lr = np.argsort(np.abs(coefs))
+
+    ax = axes[0]
+    bars = ax.barh(
+        range(len(features_labels)),
+        coefs[ordre_lr],
+        color=[PALETTE["svm"] if c > 0 else PALETTE["accent"]
+               for c in coefs[ordre_lr]],
+        alpha=0.85, zorder=3
+    )
+    ax.set_yticks(range(len(features_labels)))
+    ax.set_yticklabels([features_labels[i] for i in ordre_lr], fontsize=11)
+    ax.axvline(x=0, color="black", lw=0.8, alpha=0.5)
+    ax.set_xlabel("Coefficient (impact sur P(bascule))", fontsize=10)
+    ax.set_title(
+        "Régression Logistique — Binaire\n(positif = ↑ probabilité bascule)",
+        fontsize=11, fontweight="bold"
+    )
+    for bar, v in zip(bars, coefs[ordre_lr]):
+        ax.text(
+            v + (0.02 if v >= 0 else -0.02),
+            bar.get_y() + bar.get_height() / 2,
+            f"{v:+.3f}", va="center",
+            ha="left" if v >= 0 else "right",
+            fontsize=9, fontweight="bold"
+        )
+    patch_pos = mpatches.Patch(color=PALETTE["svm"],   label="Augmente bascule")
+    patch_neg = mpatches.Patch(color=PALETTE["accent"], label="Réduit bascule")
+    ax.legend(handles=[patch_pos, patch_neg], fontsize=9, loc="lower right")
+
+    # ── RF : importances ─────────────────────────────────────────────────────
+    rf_model = RandomForestClassifier(
+        n_estimators=300, class_weight="balanced",
+        max_depth=8, min_samples_leaf=3,
+        random_state=42, n_jobs=-1
+    )
+    rf_model.fit(X_train, y_train_multi)
+    importances = rf_model.feature_importances_
+    ordre_rf = np.argsort(importances)
+
+    ax2 = axes[1]
+    bars2 = ax2.barh(
+        range(len(features_labels)),
+        importances[ordre_rf] * 100,
+        color=PALETTE["rf"], alpha=0.85, zorder=3
+    )
+    ax2.set_yticks(range(len(features_labels)))
+    ax2.set_yticklabels([features_labels[i] for i in ordre_rf], fontsize=11)
+    ax2.set_xlabel("Importance (%)", fontsize=10)
+    ax2.set_title(
+        "Random Forest — Multiclasse\n(Gini importance)",
+        fontsize=11, fontweight="bold"
+    )
+    for bar, v in zip(bars2, importances[ordre_rf] * 100):
+        ax2.text(
+            v + 0.3,
+            bar.get_y() + bar.get_height() / 2,
+            f"{v:.1f}%", va="center", fontsize=9, fontweight="bold"
+        )
+
+    plt.tight_layout()
+    _save(fig, out_path)
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
@@ -894,6 +1099,17 @@ def main():
         FIG_PATH / "07_cv_folds.png",
     )
 
+    section("Courbes de perte MLP (Neural Net)")
+    fig_mlp_courbes_perte(
+        X_train, y_train_bin, y_train_multi,
+        FIG_PATH / "08_mlp_courbes_perte.png",
+    )
+    section("Feature Importance — LR coefficients vs RF importance")
+    fig_feature_importance(
+        X_train, y_train_bin, y_train_multi,
+        FIG_PATH / "09_feature_importance_lr_vs_rf.png",
+    )
+
     # ──────────────────────────────────────────────────────────────────────────
     # RÉCAPITULATIF FINAL
     # ──────────────────────────────────────────────────────────────────────────
@@ -905,17 +1121,19 @@ def main():
     print(f"    → data/models/best_model_multiclasse_vB.pkl")
     print(f"    → data/models/best_model_meta.json")
     print(f"\n  {BOLD}Graphiques :{RESET}")
-    for i in range(1, 8):
-        names = [
-            "01_comparaison_binaire.png",
-            "02_comparaison_multiclasse.png",
-            "03_matrices_confusion.png",
-            "04_courbes_roc.png",
-            "05_courbes_apprentissage.png",
-            "06_precision_rappel.png",
-            "07_cv_folds.png",
-        ]
-        print(f"    → results/figures/{names[i-1]}")
+    names = [
+        "01_comparaison_binaire.png",
+        "02_comparaison_multiclasse.png",
+        "03_matrices_confusion.png",
+        "04_courbes_roc.png",
+        "05_courbes_apprentissage.png",
+        "06_precision_rappel.png",
+        "07_cv_folds.png",
+        "08_mlp_courbes_perte.png",
+        "09_feature_importance_lr_vs_rf.png",
+    ]
+    for name in names:
+        print(f"    → results/figures/{name}")
 
     print(f"\n  {GREEN}{BOLD}✅ Pipeline complet !{RESET}")
     print(f"\n  Prochaine étape :")
